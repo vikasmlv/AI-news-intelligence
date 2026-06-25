@@ -1,42 +1,54 @@
-"""Article Database Model"""
+"""Article data models."""
 
-from sqlalchemy import Column, String, Text, DateTime, Float, JSON, Index
-from sqlalchemy.dialects.postgresql import UUID, ARRAY
-import uuid
 from datetime import datetime
-from src.models.base import BaseModel
+from typing import Optional, List
+from enum import Enum
+
+from pydantic import BaseModel, Field
 
 
-class Article(BaseModel):
-    """Article model for news articles"""
-    
-    __tablename__ = "articles"
-    
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    title = Column(String(500), nullable=False, index=True)
-    content = Column(Text, nullable=False)
-    summary = Column(Text, nullable=True)
-    source = Column(String(200), nullable=False, index=True)
-    source_url = Column(String(1000), nullable=False, unique=True)
-    published_at = Column(DateTime, nullable=False, index=True)
-    
-    # NLP Processing
-    sentiment = Column(String(20), nullable=True, index=True)  # positive, negative, neutral
-    sentiment_score = Column(Float, nullable=True)  # -1 to 1
-    topics = Column(ARRAY(String), nullable=True)  # Array of topic tags
-    keywords = Column(ARRAY(String), nullable=True)  # Extracted keywords
-    
-    # Processing Status
-    processing_status = Column(String(50), nullable=False, default="pending", index=True)  # pending, processing, completed, failed
-    error_message = Column(Text, nullable=True)
-    
-    # Metadata
-    language = Column(String(10), nullable=True)
-    content_length = Column(String(50), nullable=True)  # short, medium, long
-    popularity_score = Column(Float, nullable=True)  # 0-1
-    
-    # Indexing
-    __table_args__ = (
-        Index('idx_article_source_published', 'source', 'published_at'),
-        Index('idx_article_sentiment_processed', 'sentiment', 'processing_status'),
-    )
+class ArticleStatus(str, Enum):
+    """Article processing status."""
+    PENDING = "pending"
+    PROCESSING = "processing"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class ArticleCreate(BaseModel):
+    """Create article request model."""
+    title: str = Field(..., min_length=1, max_length=500)
+    content: str = Field(..., min_length=10)
+    summary: Optional[str] = Field(None, max_length=1000)
+    source: str = Field(..., min_length=1)
+    url: str = Field(..., min_length=1)
+    author: Optional[str] = Field(None)
+    published_at: datetime
+    image_url: Optional[str] = None
+    source_id: str = Field(..., description="External source identifier")
+
+
+class ArticleUpdate(BaseModel):
+    """Update article request model."""
+    title: Optional[str] = None
+    content: Optional[str] = None
+    summary: Optional[str] = None
+    status: Optional[ArticleStatus] = None
+    processed_at: Optional[datetime] = None
+    embeddings: Optional[List[float]] = None
+
+
+class Article(ArticleCreate):
+    """Article response model."""
+    id: int
+    status: ArticleStatus = ArticleStatus.PENDING
+    embeddings: Optional[List[float]] = None
+    keywords: Optional[List[str]] = None
+    sentiment_score: Optional[float] = None
+    processed_at: Optional[datetime] = None
+    created_at: datetime
+    updated_at: datetime
+
+    class Config:
+        """Pydantic config."""
+        from_attributes = True

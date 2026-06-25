@@ -1,5 +1,16 @@
-"""Database Models Package"""
+"""Data models for the application."""
 
-from . import article, base
+from src.models.article import Article, ArticleCreate, ArticleUpdate
+from src.models.source import Source, SourceCreate, SourceUpdate
+from src.models.processing import ProcessingJob, ProcessingJobStatus
 
-__all__ = ["base", "article"]
+__all__ = [
+    "Article",
+    "ArticleCreate",
+    "ArticleUpdate",
+    "Source",
+    "SourceCreate",
+    "SourceUpdate",
+    "ProcessingJob",
+    "ProcessingJobStatus",
+]
