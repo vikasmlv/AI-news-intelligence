@@ -1,49 +1,28 @@
-"""News source data models."""
+"""News Source Database Model"""
 
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Index
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 from datetime import datetime
-from typing import Optional
-from enum import Enum
-
-from pydantic import BaseModel, Field
+from src.models.base import BaseModel
 
 
-class SourceType(str, Enum):
-    """Supported news source types."""
-    NEWSAPI = "newsapi"
-    GUARDIAN = "guardian"
-    NYTIMES = "nytimes"
-    RSS = "rss"
-    CUSTOM = "custom"
-
-
-class SourceCreate(BaseModel):
-    """Create news source request model."""
-    name: str = Field(..., min_length=1, max_length=200)
-    type: SourceType
-    url: str = Field(..., min_length=1)
-    api_key: Optional[str] = None
-    is_active: bool = True
-    priority: int = Field(default=1, ge=1, le=10)
-    rate_limit: int = Field(default=100, description="Requests per hour")
-
-
-class SourceUpdate(BaseModel):
-    """Update news source request model."""
-    name: Optional[str] = None
-    is_active: Optional[bool] = None
-    priority: Optional[int] = None
-    rate_limit: Optional[int] = None
-    last_fetched_at: Optional[datetime] = None
-
-
-class Source(SourceCreate):
-    """News source response model."""
-    id: int
-    last_fetched_at: Optional[datetime] = None
-    article_count: int = 0
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        """Pydantic config."""
-        from_attributes = True
+class NewsSource(BaseModel):
+    """News source model"""
+    
+    __tablename__ = "news_sources"
+    
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String(200), nullable=False, unique=True, index=True)
+    source_type = Column(String(50), nullable=False)  # newsapi, guardian, nytimes, rss, custom
+    url = Column(String(1000), nullable=False)
+    api_key = Column(String(500), nullable=True)  # Encrypted in production
+    is_active = Column(Boolean, nullable=False, default=True, index=True)
+    priority = Column(Integer, nullable=False, default=1)  # 1-10, higher = priority
+    rate_limit = Column(Integer, nullable=False, default=100)  # Requests per hour
+    last_fetched_at = Column(DateTime, nullable=True, index=True)
+    article_count = Column(Integer, nullable=False, default=0)
+    
+    __table_args__ = (
+        Index('idx_source_type_active', 'source_type', 'is_active'),
+    )
