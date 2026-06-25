@@ -1,58 +1,64 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: news_intelligence_db
+    container_name: news_db
     environment:
-      POSTGRES_USER: intelligence_user
-      POSTGRES_PASSWORD: intelligence_password
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
       POSTGRES_DB: news_intelligence
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
       - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U intelligence_user"]
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # Redis Cache & Message Broker
   redis:
     image: redis:7-alpine
-    container_name: news_intelligence_cache
+    container_name: news_cache
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
 
+  # FastAPI Application
   api:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: news_intelligence_api
-    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
+    container_name: news_api
     environment:
-      DATABASE_URL: postgresql://intelligence_user:intelligence_password@postgres:5432/news_intelligence
-      ENV: development
-      DEBUG: "True"
-    volumes:
-      - .:/app
+      - DATABASE_URL=postgresql://postgres:password@postgres:5432/news_intelligence
+      - REDIS_URL=redis://redis:6379
+      - APP_ENV=development
+      - DEBUG=True
     ports:
       - "8000:8000"
+    volumes:
+      - .:/app
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+    command: uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
 
 volumes:
   postgres_data:
+  redis_data:
 
 networks:
   default:
-    name: news_intelligence_network
+    name: news_network

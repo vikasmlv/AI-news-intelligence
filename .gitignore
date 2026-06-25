@@ -130,10 +130,9 @@ dmypy.json
 *~
 .DS_Store
 
-# AWS
-.aws/
-*.pem
-
-# Local development
-localstack/
-.localstack/
+# Project specific
+*.db
+*.sqlite
+.local/
+data/
+logs/
